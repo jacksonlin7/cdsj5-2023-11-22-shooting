@@ -15,19 +15,24 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH // 4, HEIGHT // 2)
         self.score = 0
-        self.key_space = False
+        self.key_shoot = False
 
     def update(self):
         keys = pygame.key.get_pressed()
-        if not self.key_space and keys[pygame.K_SPACE]:
-            self.key_space = True
-        if self.key_space and not keys[pygame.K_SPACE]:
+        if not self.key_shoot and keys[pygame.K_SPACE]:
+            self.key_shoot = True
+        if self.key_shoot and not keys[pygame.K_SPACE]:
             sprites.add(Bullet(self.rect.right, self.rect.centery - 2.5))
-            self.key_space = False
+            self.key_shoot = False
         if keys[pygame.K_UP]:
             self.rect.y -= 5
         if keys[pygame.K_DOWN]:
             self.rect.y += 5
+
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > HEIGHT:
+            self.rect.bottom = HEIGHT
 
 class Target(pygame.sprite.Sprite):
     def __init__(self) -> None:
@@ -51,13 +56,13 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.x, self.rect.y = (x, y)
 
     def update(self):
-        self.rect.x += 5
+        self.rect.x += 8
         if self.rect.left > WIDTH:
             self.kill()
         if self.rect.collideobjects([target]):
             player.score += 1
             print(player.score)
-            target.rect.y = random.randint(1, HEIGHT)
+            target.rect.y = random.randint(30, HEIGHT - 30)
             self.kill()
 
 class Score(pygame.sprite.Sprite):
