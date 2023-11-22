@@ -15,15 +15,17 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH // 4, HEIGHT // 2)
         self.score = 0
-        self.key_shoot = False
+        self.cd = 0
 
     def update(self):
+        if self.cd > 0:
+            self.cd -= 1
+
         keys = pygame.key.get_pressed()
-        if not self.key_shoot and keys[pygame.K_SPACE]:
-            self.key_shoot = True
-        if self.key_shoot and not keys[pygame.K_SPACE]:
+        if keys[pygame.K_SPACE] and self.cd <= 0:
             sprites.add(Bullet(self.rect.right, self.rect.centery - 2.5))
-            self.key_shoot = False
+            self.cd = 5
+
         if keys[pygame.K_UP]:
             self.rect.y -= 5
         if keys[pygame.K_DOWN]:
