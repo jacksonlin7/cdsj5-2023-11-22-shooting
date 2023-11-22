@@ -44,7 +44,6 @@ class Target(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH // 2 + WIDTH // 4, HEIGHT // 2)
         self.score = 0
-        self.key_space = False
 
     def update(self):
         pass
