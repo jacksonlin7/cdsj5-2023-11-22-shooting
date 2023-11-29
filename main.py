@@ -64,14 +64,14 @@ class Target(pygame.sprite.Sprite):
                 player.health -= 1
 
         if self.current_direction == 0:
-            self.rect.y -= 5
+            self.rect.y -= random.randint(5, 8)
             self.current_pos += 1
             if self.current_pos > 10:
                 self.current_pos = 0
                 self.current_direction = 1
 
         if self.current_direction == 1:
-            self.rect.y += 5
+            self.rect.y += random.randint(5, 8)
             self.current_pos += 1
             if self.current_pos > 10:
                 self.current_pos = 0
@@ -103,14 +103,14 @@ class Medkit(pygame.sprite.Sprite):
             self.rect.centerx = WIDTH
 
         if self.current_direction == 0:
-            self.rect.y -= 5
+            self.rect.y -= random.randint(5, 8)
             self.current_pos += 1
             if self.current_pos > 10:
                 self.current_pos = 0
                 self.current_direction = 1
 
         if self.current_direction == 1:
-            self.rect.y += 5
+            self.rect.y += random.randint(5, 8)
             self.current_pos += 1
             if self.current_pos > 10:
                 self.current_pos = 0
@@ -119,8 +119,7 @@ class Medkit(pygame.sprite.Sprite):
         if player.health <= 0:
             self.kill()
 
-        if self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]):
-            self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]).kill()
+        if self.rect.collideobjects([player]):
             player.health += 1
             self.rect.y = random.randint(30, HEIGHT - 30)
             self.kill()
