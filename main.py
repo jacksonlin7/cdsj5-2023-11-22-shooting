@@ -100,7 +100,7 @@ class Medkit(pygame.sprite.Sprite):
         self.rect.x -= 3
 
         if self.rect.x < 0:
-            self.rect.centerx = WIDTH
+            self.kill()
 
         if self.current_direction == 0:
             self.rect.y -= random.randint(5, 8)
