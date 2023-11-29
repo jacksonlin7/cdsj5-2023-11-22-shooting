@@ -1,4 +1,4 @@
-import pygame, random
+import pygame, random, socket
 
 pygame.init()
 
@@ -13,13 +13,19 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.Surface((50, 50))
         self.image.fill((0, 0, 255))
         self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH // 4, HEIGHT // 2)
+        self.rect.center = (self.rect.width, HEIGHT // 2)
         self.score = 0
+        self.health = 3
         self.cd = 0
+        self.medkit_generate_level = 1
 
     def update(self):
         if self.cd > 0:
             self.cd -= 1
+
+        if self.score // 5 == self.medkit_generate_level:
+            sprites.add(Medkit())
+            self.medkit_generate_level += 1
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_SPACE] and self.cd <= 0:
@@ -36,17 +42,88 @@ class Player(pygame.sprite.Sprite):
         if self.rect.bottom > HEIGHT:
             self.rect.bottom = HEIGHT
 
+        if self.health <= 0:
+            self.kill()
+
 class Target(pygame.sprite.Sprite):
     def __init__(self) -> None:
         super().__init__()
+        self.current_direction = random.randint(0, 1)
+        self.current_pos = 0
         self.image = pygame.Surface((20, 20))
         self.image.fill((0, 255, 255))
         self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH // 2 + WIDTH // 4, HEIGHT // 2)
-        self.score = 0
+        self.rect.center = (WIDTH, random.randint(30, HEIGHT - 30))
 
     def update(self):
-        pass
+        self.rect.x -= 3
+
+        if self.rect.x < 0:
+            self.rect.centerx = WIDTH
+            if player.health > 0:
+                player.health -= 1
+
+        if self.current_direction == 0:
+            self.rect.y -= 5
+            self.current_pos += 1
+            if self.current_pos > 10:
+                self.current_pos = 0
+                self.current_direction = 1
+
+        if self.current_direction == 1:
+            self.rect.y += 5
+            self.current_pos += 1
+            if self.current_pos > 10:
+                self.current_pos = 0
+                self.current_direction = 0
+
+        if player.health <= 0:
+            self.kill()
+
+        if self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]):
+            self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]).kill()
+            player.score += 1
+            self.rect.y = random.randint(30, HEIGHT - 30)
+            self.rect.centerx = WIDTH
+
+class Medkit(pygame.sprite.Sprite):
+    def __init__(self) -> None:
+        super().__init__()
+        self.current_direction = random.randint(0, 1)
+        self.current_pos = 0
+        self.image = pygame.Surface((20, 20))
+        self.image.fill((100, 100, 255))
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH, random.randint(30, HEIGHT - 30))
+
+    def update(self):
+        self.rect.x -= 3
+
+        if self.rect.x < 0:
+            self.rect.centerx = WIDTH
+
+        if self.current_direction == 0:
+            self.rect.y -= 5
+            self.current_pos += 1
+            if self.current_pos > 10:
+                self.current_pos = 0
+                self.current_direction = 1
+
+        if self.current_direction == 1:
+            self.rect.y += 5
+            self.current_pos += 1
+            if self.current_pos > 10:
+                self.current_pos = 0
+                self.current_direction = 0
+
+        if player.health <= 0:
+            self.kill()
+
+        if self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]):
+            self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]).kill()
+            player.health += 1
+            self.rect.y = random.randint(30, HEIGHT - 30)
+            self.kill()
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x: int, y: int) -> None:
@@ -60,32 +137,41 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.x += 8
         if self.rect.left > WIDTH:
             self.kill()
-        if self.rect.collideobjects([target]):
-            player.score += 1
-            print(player.score)
-            target.rect.y = random.randint(30, HEIGHT - 30)
-            self.kill()
 
 class Score(pygame.sprite.Sprite):
     def __init__(self) -> None:
         super().__init__()
         self.font = pygame.font.SysFont('Arial', 28, True, False)
-        self.image = self.font.render(str(player.score), True, (0, 0, 0))
+        self.image = self.font.render('Score: ' + str(player.score), True, (0, 0, 0))
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH // 8 * 7, HEIGHT // 8)
     
     def update(self) -> None:
-        self.image = self.font.render(str(player.score), True, (0, 0, 0))
+        self.image = self.font.render('Score: ' + str(player.score), True, (0, 0, 0))
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH // 8 * 7, HEIGHT // 8)
 
+class Health(pygame.sprite.Sprite):
+    def __init__(self) -> None:
+        super().__init__()
+        self.font = pygame.font.SysFont('Arial', 28, True, False)
+        self.image = self.font.render('Health: ' + str(player.health), True, (0, 0, 0))
+        self.rect = self.image.get_rect()
+        self.rect.center = (self.rect.width // 2 + 12, HEIGHT // 8)
+    
+    def update(self) -> None:
+        self.image = self.font.render('Health: ' + str(player.health), True, (0, 0, 0))
+        self.rect = self.image.get_rect()
+        self.rect.center = (self.rect.width // 2 + 12, HEIGHT // 8)
+
 player = Player()
-target = Target()
 
 sprites = pygame.sprite.Group()
+for i in range(3):
+    sprites.add(Target())
 sprites.add(player)
-sprites.add(target)
 sprites.add(Score())
+sprites.add(Health())
 
 while running:
     clock.tick(60)
