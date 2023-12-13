@@ -36,8 +36,12 @@ def handle_client(client: socket.socket, ip: tuple):
         data_length = str(data_length) + ' ' * (5 - len(str(data_length)))
         data_length = data_length.encode('utf-8')
 
-        client.send(data_length)
-        client.send(data)
+        try:
+            client.send(data_length)
+            client.send(data)
+        except Exception:
+            sprites.remove(players[f'{ip[0]}:{ip[1]}'])
+            del players[f'{ip[0]}:{ip[1]}']
 
     sprites.remove(players[f'{ip[0]}:{ip[1]}'])
     del players[f'{ip[0]}:{ip[1]}']
