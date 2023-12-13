@@ -39,12 +39,9 @@ def handle_client(client: socket.socket, ip: tuple):
         try:
             client.send(data_length)
             client.send(data)
-        except (ConnectionResetError, KeyError):
+        except (ConnectionResetError):
             sprites.remove(players[f'{ip[0]}:{ip[1]}'])
             del players[f'{ip[0]}:{ip[1]}']
-
-    sprites.remove(players[f'{ip[0]}:{ip[1]}'])
-    del players[f'{ip[0]}:{ip[1]}']
 
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
