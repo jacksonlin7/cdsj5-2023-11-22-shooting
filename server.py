@@ -18,16 +18,26 @@ def handle_client(client: socket.socket, ip: tuple):
         f'{ip[0]}:{ip[1]}': Player()
     })
 
-    data = {}
-    for sprite in sprites.sprites():
-        data.update({
-            f'{type(sprite).__name__}-{sprite.id}': {
-                'id': sprite.id,
-                'type': type(sprite).__name__,
-                'x': sprite.rect.x,
-                'y': sprite.rect.y
-            }
-        })
+    while running:
+        data = {}
+        for sprite in sprites.sprites():
+            data.update({
+                f'{type(sprite).__name__}-{sprite.id}': {
+                    'id': sprite.id,
+                    'type': type(sprite).__name__,
+                    'x': sprite.rect.x,
+                    'y': sprite.rect.y
+                }
+            })
+        
+        data = json.dumps(data)
+        data = data.encode('utf-8')
+        data_length = len(data)
+        data_length = str(data_length) + ' ' * (5 - len(str(data_length)))
+        data_length = data_length.encode('utf-8')
+
+        client.send(data_length)
+        client.send(data)
 
     sprites.remove(players[f'{ip[0]}:{ip[1]}'])
     del players[f'{ip[0]}:{ip[1]}']
@@ -38,7 +48,7 @@ def start_server():
     server.listen(5)
 
     while running:
-        threading.Thread(target=handle_client, args=list(server.accept())).start()
+        threading.Thread(target=handle_client, args=list(server.accept()), daemon=True).start()
 
     server.close()
 
