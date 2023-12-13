@@ -39,7 +39,7 @@ def handle_client(client: socket.socket, ip: tuple):
         try:
             client.send(data_length)
             client.send(data)
-        except Exception:
+        except (ConnectionResetError, KeyError):
             sprites.remove(players[f'{ip[0]}:{ip[1]}'])
             del players[f'{ip[0]}:{ip[1]}']
 
