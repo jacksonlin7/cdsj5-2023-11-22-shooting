@@ -1,13 +1,19 @@
 import socket, json, threading, pygame, random, sys
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(('172.16.172.218', 3000))
+client.connect(('172.16.172.191', 3000))
 
 data_obj = {}
 running = True
 
+client_data = {
+    "k-up": False,
+    "k-down": False,
+    "k-space": False
+}
+
 def server_transfer_data():
-    global data_obj, running
+    global data_obj, client_data, running
     while running:
         data_length = client.recv(5)
         data_length = int(data_length.decode('utf-8'))
@@ -15,9 +21,19 @@ def server_transfer_data():
         data = data.decode('utf-8')
         data_obj = json.loads(data)
 
+        cdata = json.dumps(client_data)
+        cdata = cdata.encode('utf-8')
+        cdata_length = len(cdata)
+        cdata_length = str(cdata_length) + ' ' * (5 - len(str(cdata_length)))
+        cdata_length = cdata_length.encode('utf-8')
+
+        client.send(cdata_length)
+        client.send(cdata)
+
 threading.Thread(target=server_transfer_data, daemon=True).start()
 
 pygame.init()
+pygame.display.set_caption('Client')
 
 WIDTH, HEIGHT = 500, 400
 window = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -32,6 +48,22 @@ class Player(pygame.sprite.Sprite):
         self.image.fill((0, 0, 255))
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
+
+    def update(self) -> None:
+        if pygame.key.get_pressed()[pygame.K_UP]:
+            client_data['k-up'] = True
+        else:
+            client_data['k-up'] = False
+
+        if pygame.key.get_pressed()[pygame.K_DOWN]:
+            client_data['k-down'] = True
+        else:
+            client_data['k-down'] = False
+
+        if pygame.key.get_pressed()[pygame.K_SPACE]:
+            client_data['k-space'] = True
+        else:
+            client_data['k-space'] = False
 
 class Target(pygame.sprite.Sprite):
     def __init__(self, x, y) -> None:
@@ -61,7 +93,7 @@ class Score(pygame.sprite.Sprite):
     def __init__(self, x, y) -> None:
         super().__init__()
         self.font = pygame.font.SysFont('Arial', 28, True, False)
-        self.image = self.font.render('Score: ' + 'None', True, (0, 0, 0))
+        self.image = self.font.render('Score: ' + str(list(data_obj.values())[0]['score']), True, (0, 0, 0))
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
 
@@ -69,7 +101,7 @@ class Health(pygame.sprite.Sprite):
     def __init__(self, x, y) -> None:
         super().__init__()
         self.font = pygame.font.SysFont('Arial', 28, True, False)
-        self.image = self.font.render('Health: ' + 'None', True, (0, 0, 0))
+        self.image = self.font.render('Health: ' + str(list(data_obj.values())[0]['health']), True, (0, 0, 0))
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = x, y
 
@@ -101,6 +133,8 @@ while True:
 
         elif obj['type'] == 'Health':
             sprites.add(Health(obj['x'], obj['y']))
+
+    sprites.update()
 
     window.fill((255, 255, 255))
     sprites.draw(window)
