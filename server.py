@@ -1,255 +1,141 @@
-import pygame, random, socket, threading, time, json
+import socket, json, threading, pygame, random, sys
+
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect(('172.16.172.191', 3000))
+
+data_obj = {}
+running = True
+
+client_data = {
+    "k-up": False,
+    "k-down": False,
+    "k-space": False
+}
+
+def server_transfer_data():
+    global data_obj, client_data, running
+    while running:
+        data_length = client.recv(5)
+        data_length = int(data_length.decode('utf-8'))
+        data = client.recv(data_length)
+        data = data.decode('utf-8')
+        data_obj = json.loads(data)
+
+        cdata = json.dumps(client_data)
+        cdata = cdata.encode('utf-8')
+        cdata_length = len(cdata)
+        cdata_length = str(cdata_length) + ' ' * (5 - len(str(cdata_length)))
+        cdata_length = cdata_length.encode('utf-8')
+
+        client.send(cdata_length)
+        client.send(cdata)
+
+threading.Thread(target=server_transfer_data, daemon=True).start()
 
 pygame.init()
+pygame.display.set_caption('Client')
 
 WIDTH, HEIGHT = 500, 400
 window = pygame.display.set_mode((WIDTH, HEIGHT))
-running = True
 clock = pygame.time.Clock()
 
 SERVER_IP, SERVER_PORT = socket.gethostbyname(socket.gethostname()), 3000
 
-medkit_generate_level = 1
-score = 0
-health = 1000000000
-
-def handle_client(client: socket.socket, ip: tuple):
-    players.update({
-        f'{ip[0]}:{ip[1]}': Player()
-    })
-
-    while running:
-        data = {}
-        for sprite in sprites.sprites():
-            data.update({
-                f'{type(sprite).__name__}-{sprite.id}': {
-                    'id': sprite.id,
-                    'type': type(sprite).__name__,
-                    'x': sprite.rect.x,
-                    'y': sprite.rect.y
-                }
-            })
-        
-        data = json.dumps(data)
-        data = data.encode('utf-8')
-        data_length = len(data)
-        data_length = str(data_length) + ' ' * (5 - len(str(data_length)))
-        data_length = data_length.encode('utf-8')
-
-        try:
-            client.send(data_length)
-            client.send(data)
-        except (ConnectionResetError):
-            sprites.remove(players[f'{ip[0]}:{ip[1]}'])
-            del players[f'{ip[0]}:{ip[1]}']
-
-def start_server():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((SERVER_IP, SERVER_PORT))
-    server.listen(5)
-
-    while running:
-        threading.Thread(target=handle_client, args=list(server.accept()), daemon=True).start()
-
-    server.close()
-
 class Player(pygame.sprite.Sprite):
-    def __init__(self) -> None:
+    def __init__(self, x, y) -> None:
         super().__init__()
-        self.id = random.randint(10000, 99999)
         self.image = pygame.Surface((50, 50))
         self.image.fill((0, 0, 255))
         self.rect = self.image.get_rect()
-        self.rect.center = (self.rect.width, HEIGHT // 2)
-        self.cd = 0
+        self.rect.x, self.rect.y = x, y
 
-    def update(self):
-        global medkit_generate_level, score, health
+    def update(self) -> None:
+        if pygame.key.get_pressed()[pygame.K_UP]:
+            client_data['k-up'] = True
+        else:
+            client_data['k-up'] = False
 
-        if self.cd > 0:
-            self.cd -= 1
+        if pygame.key.get_pressed()[pygame.K_DOWN]:
+            client_data['k-down'] = True
+        else:
+            client_data['k-down'] = False
 
-        if score // 5 == medkit_generate_level:
-            sprites.add(Medkit())
-            medkit_generate_level += 1
-
-        if self == players[f'{SERVER_IP}:{SERVER_PORT}']:
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_SPACE] and self.cd <= 0:
-                sprites.add(Bullet(self.rect.right, self.rect.centery - 2.5))
-                self.cd = 5
-
-        if self == players[f'{SERVER_IP}:{SERVER_PORT}']:
-            if keys[pygame.K_UP]:
-                self.rect.y -= 5
-            if keys[pygame.K_DOWN]:
-                self.rect.y += 5
-
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > HEIGHT:
-            self.rect.bottom = HEIGHT
-
-        if health <= 0:
-            self.kill()
+        if pygame.key.get_pressed()[pygame.K_SPACE]:
+            client_data['k-space'] = True
+        else:
+            client_data['k-space'] = False
 
 class Target(pygame.sprite.Sprite):
-    def __init__(self) -> None:
+    def __init__(self, x, y) -> None:
         super().__init__()
-        self.id = random.randint(10000, 99999)
-        self.current_direction = random.randint(0, 1)
-        self.current_pos = 0
         self.image = pygame.Surface((20, 20))
         self.image.fill((0, 255, 255))
         self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH, random.randint(30, HEIGHT - 30))
-
-    def update(self):
-        global medkit_generate_level, score, health
-
-        self.rect.x -= 3
-
-        if self.rect.x < 0:
-            self.rect.centerx = WIDTH
-            health -= 1
-
-        if self.current_direction == 0:
-            self.rect.y -= random.randint(5, 8)
-            self.current_pos += 1
-            if self.current_pos > 10:
-                self.current_pos = 0
-                self.current_direction = 1
-
-        if self.current_direction == 1:
-            self.rect.y += random.randint(5, 8)
-            self.current_pos += 1
-            if self.current_pos > 10:
-                self.current_pos = 0
-                self.current_direction = 0
-
-        for p in sprites.sprites():
-            if type(p) == Player:
-                if health <= 0:
-                    self.kill()
-
-        if self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]):
-            self.rect.collideobjects([bullet for bullet in sprites if type(bullet) == Bullet]).kill()
-            score += 1
-            self.rect.y = random.randint(30, HEIGHT - 30)
-            self.rect.centerx = WIDTH
+        self.rect.x, self.rect.y = x, y
 
 class Medkit(pygame.sprite.Sprite):
-    def __init__(self) -> None:
+    def __init__(self, x, y) -> None:
         super().__init__()
-        self.id = random.randint(10000, 99999)
-        self.current_direction = random.randint(0, 1)
-        self.current_pos = 0
         self.image = pygame.Surface((20, 20))
         self.image.fill((100, 100, 255))
         self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH, random.randint(30, HEIGHT - 30))
-
-    def update(self):
-        global medkit_generate_level, score, health
-
-        self.rect.x -= 3
-
-        if self.rect.x < 0:
-            self.kill()
-
-        if self.current_direction == 0:
-            self.rect.y -= random.randint(5, 8)
-            self.current_pos += 1
-            if self.current_pos > 10:
-                self.current_pos = 0
-                self.current_direction = 1
-
-        if self.current_direction == 1:
-            self.rect.y += random.randint(5, 8)
-            self.current_pos += 1
-            if self.current_pos > 10:
-                self.current_pos = 0
-                self.current_direction = 0
-
-        if health <= 0:
-            self.kill()
-
-        if self.rect.collideobjects([ p for p in sprites.sprites() if type(p) == Player ]):
-            health += 1
-            self.rect.y = random.randint(30, HEIGHT - 30)
-            self.kill()
+        self.rect.x, self.rect.y = x, y
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x: int, y: int) -> None:
         super().__init__()
-        self.id = random.randint(10000, 99999)
         self.image = pygame.Surface((20, 5))
         self.image.fill((255, 0, 0))
         self.rect = self.image.get_rect()
-        self.rect.x, self.rect.y = (x, y)
-
-    def update(self):
-        self.rect.x += 8
-        if self.rect.left > WIDTH:
-            self.kill()
+        self.rect.x, self.rect.y = x, y
 
 class Score(pygame.sprite.Sprite):
-    def __init__(self) -> None:
+    def __init__(self, x, y) -> None:
         super().__init__()
-        self.id = random.randint(10000, 99999)
-        global medkit_generate_level, score, health
         self.font = pygame.font.SysFont('Arial', 28, True, False)
-        self.image = self.font.render('Score: ' + str(score), True, (0, 0, 0))
+        self.image = self.font.render('Score: ' + str(list(data_obj.values())[0]['score']), True, (0, 0, 0))
         self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH // 8 * 7, HEIGHT // 8)
-    
-    def update(self) -> None:
-        global medkit_generate_level, score, health
-        self.image = self.font.render('Score: ' + str(score), True, (0, 0, 0))
-        self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH // 8 * 7, HEIGHT // 8)
+        self.rect.x, self.rect.y = x, y
 
 class Health(pygame.sprite.Sprite):
-    def __init__(self) -> None:
+    def __init__(self, x, y) -> None:
         super().__init__()
-        self.id = random.randint(10000, 99999)
-        global medkit_generate_level, score, health
         self.font = pygame.font.SysFont('Arial', 28, True, False)
-        self.image = self.font.render('Health: ' + str(health), True, (0, 0, 0))
+        self.image = self.font.render('Health: ' + str(list(data_obj.values())[0]['health']), True, (0, 0, 0))
         self.rect = self.image.get_rect()
-        self.rect.center = (self.rect.width // 2 + 12, HEIGHT // 8)
-    
-    def update(self) -> None:
-        global medkit_generate_level, score, health
-        self.image = self.font.render('Health: ' + str(health), True, (0, 0, 0))
-        self.rect = self.image.get_rect()
-        self.rect.center = (self.rect.width // 2 + 12, HEIGHT // 8)
-
-players: dict = {
-    f'{SERVER_IP}:{SERVER_PORT}': Player()
-}
+        self.rect.x, self.rect.y = x, y
 
 sprites = pygame.sprite.Group()
-for i in range(3):
-    sprites.add(Target())
-sprites.add(Score())
-sprites.add(Health())
 
-threading.Thread(target=start_server, daemon=True).start()
-
-while running:
+while True:
     clock.tick(60)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            sys.exit(pygame.quit)
 
-    for player in players.values():
-        if player not in sprites.sprites():
-            sprites.add(player)
+    sprites.empty()
+
+    for obj in data_obj.values():
+        if obj['type'] == 'Player':
+            sprites.add(Player(obj['x'], obj['y']))
+        
+        elif obj['type'] == 'Target':
+            sprites.add(Target(obj['x'], obj['y']))
+
+        elif obj['type'] == 'Medkit':
+            sprites.add(Medkit(obj['x'], obj['y']))
+
+        elif obj['type'] == 'Bullet':
+            sprites.add(Bullet(obj['x'], obj['y']))
+
+        elif obj['type'] == 'Score':
+            sprites.add(Score(obj['x'], obj['y']))
+
+        elif obj['type'] == 'Health':
+            sprites.add(Health(obj['x'], obj['y']))
+
     sprites.update()
 
     window.fill((255, 255, 255))
     sprites.draw(window)
     pygame.display.update()
-
-pygame.quit()
