@@ -12,7 +12,7 @@ pygame.display.set_caption(f'Server [{SERVER_IP}:{SERVER_PORT}]')
 
 medkit_generate_level = 1
 score = 0
-health = 1000000000
+health = 100
 
 def handle_client(client: socket.socket, ip: tuple):
     players.update({
@@ -49,21 +49,24 @@ def handle_client(client: socket.socket, ip: tuple):
             client_data = client_data.decode('utf-8')
             client_data_obj = json.loads(client_data)
 
-            if client_data_obj['k-up'] and players[f'{ip[0]}:{ip[1]}'].cd <= 0:
-                players[f'{ip[0]}:{ip[1]}'].rect.y -= 1
-                players[f'{ip[0]}:{ip[1]}'].cd = 5
+            if client_data_obj['k-up'] and players[f'{ip[0]}:{ip[1]}'].move_cd <= 0:
+                players[f'{ip[0]}:{ip[1]}'].rect.y -= 5
+                players[f'{ip[0]}:{ip[1]}'].move_cd = 1
 
-            if client_data_obj['k-down'] and players[f'{ip[0]}:{ip[1]}'].cd <= 0:
-                players[f'{ip[0]}:{ip[1]}'].rect.y += 1
-                players[f'{ip[0]}:{ip[1]}'].cd = 5
+            if client_data_obj['k-down'] and players[f'{ip[0]}:{ip[1]}'].move_cd <= 0:
+                players[f'{ip[0]}:{ip[1]}'].rect.y += 5
+                players[f'{ip[0]}:{ip[1]}'].move_cd = 1
 
             if client_data_obj['k-space'] and players[f'{ip[0]}:{ip[1]}'].cd <= 0:
                 sprites.add(Bullet(players[f'{ip[0]}:{ip[1]}'].rect.right, players[f'{ip[0]}:{ip[1]}'].rect.centery - 2.5))
                 players[f'{ip[0]}:{ip[1]}'].cd = 5
 
         except (ConnectionResetError):
-            sprites.remove(players[f'{ip[0]}:{ip[1]}'])
-            del players[f'{ip[0]}:{ip[1]}']
+            try:
+                sprites.remove(players[f'{ip[0]}:{ip[1]}'])
+                del players[f'{ip[0]}:{ip[1]}']
+            except KeyError:
+                pass
 
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -84,12 +87,16 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (self.rect.width, HEIGHT // 2)
         self.cd = 0
+        self.move_cd = 0
 
     def update(self):
         global medkit_generate_level, score, health
 
         if self.cd > 0:
             self.cd -= 1
+
+        if self.move_cd > 0:
+            self.move_cd -= 1
 
         if score // 5 == medkit_generate_level:
             sprites.add(Medkit())
