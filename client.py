@@ -1,7 +1,8 @@
 import socket, json, threading, pygame, random, sys
+from time import sleep
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(('172.16.172.191', 3000))
+client.connect(('172.16.172.218', 3000))
 
 data_obj = {}
 running = True
@@ -15,11 +16,16 @@ client_data = {
 def server_transfer_data():
     global data_obj, client_data, running
     while running:
-        data_length = client.recv(5)
-        data_length = int(data_length.decode('utf-8'))
-        data = client.recv(data_length)
-        data = data.decode('utf-8')
-        data_obj = json.loads(data)
+        try:
+            data_length = client.recv(5)
+            data_length = int(data_length.decode('utf-8'))
+            data = client.recv(data_length)
+            data = data.decode('utf-8')
+            data_obj = json.loads(data)
+        except:
+            print(
+                'Internal Error'
+            )
 
         cdata = json.dumps(client_data)
         cdata = cdata.encode('utf-8')
@@ -29,6 +35,8 @@ def server_transfer_data():
 
         client.send(cdata_length)
         client.send(cdata)
+
+        sleep(0.01)
 
 threading.Thread(target=server_transfer_data, daemon=True).start()
 
