@@ -1,4 +1,5 @@
 import pygame, random, socket
+from pygame.image import load
 
 pygame.init()
 
@@ -9,26 +10,32 @@ clock = pygame.time.Clock()
 
 score = 0
 health = 10
+medkit_generate_level = 1
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, id: int) -> None:
         super().__init__()
-        self.image = pygame.Surface((50, 50))
-        self.image.fill((0, 0, 255))
+        if id == 1:
+            self.image = pygame.transform.rotate(pygame.transform.scale(load('./player1.png'), (60, 60)), -90)
+        elif id == 2:
+            self.image = pygame.transform.rotate(pygame.transform.scale(load('./player2.png'), (60, 50)), -90)
+        elif id == 3:
+            self.image = pygame.transform.rotate(pygame.transform.scale(load('./player3.png'), (60, 60)), -90)
+
         self.rect = self.image.get_rect()
         self.rect.center = (self.rect.width, HEIGHT // 2)
         self.score = 0
         self.cd = 0
         self.id = id
-        self.medkit_generate_level = 1
 
     def update(self):
+        global score, medkit_generate_level
         if self.cd > 0:
             self.cd -= 1
 
-        if self.score // 5 == self.medkit_generate_level:
+        if score // 5 == medkit_generate_level:
             sprites.add(Medkit())
-            self.medkit_generate_level += 1
+            medkit_generate_level += 1
 
         keys = pygame.key.get_pressed()
         if self.id == 1:
@@ -38,6 +45,11 @@ class Player(pygame.sprite.Sprite):
 
         if self.id == 2:
             if keys[pygame.K_q] and self.cd <= 0:
+                sprites.add(Bullet(self.rect.right, self.rect.centery - 2.5))
+                self.cd = 5
+
+        if self.id == 3:
+            if keys[pygame.K_u] and self.cd <= 0:
                 sprites.add(Bullet(self.rect.right, self.rect.centery - 2.5))
                 self.cd = 5
 
@@ -53,6 +65,12 @@ class Player(pygame.sprite.Sprite):
             if keys[pygame.K_s]:
                 self.rect.y += 5
 
+        if self.id == 3:
+            if keys[pygame.K_i]:
+                self.rect.y -= 5
+            if keys[pygame.K_k]:
+                self.rect.y += 5
+
         if self.rect.top < 0:
             self.rect.top = 0
         if self.rect.bottom > HEIGHT:
@@ -66,8 +84,7 @@ class Target(pygame.sprite.Sprite):
         super().__init__()
         self.current_direction = random.randint(0, 1)
         self.current_pos = 0
-        self.image = pygame.Surface((20, 20))
-        self.image.fill((0, 255, 255))
+        self.image = pygame.transform.rotate(pygame.transform.scale(load('./stone.png'), (30, 30)), -90)
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH, random.randint(30, HEIGHT - 30))
 
@@ -108,8 +125,7 @@ class Medkit(pygame.sprite.Sprite):
         super().__init__()
         self.current_direction = random.randint(0, 1)
         self.current_pos = 0
-        self.image = pygame.Surface((20, 20))
-        self.image.fill((100, 100, 255))
+        self.image = pygame.transform.scale(load('./medkit.png'), (25, 25))
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH, random.randint(30, HEIGHT - 30))
 
@@ -137,7 +153,7 @@ class Medkit(pygame.sprite.Sprite):
         if health <= 0:
             self.kill()
 
-        if self.rect.collideobjects([player1, player2]):
+        if self.rect.collideobjects([player1, player2, player3]):
             health += 1
             self.rect.y = random.randint(30, HEIGHT - 30)
             self.kill()
@@ -187,15 +203,18 @@ class Health(pygame.sprite.Sprite):
 
 player1 = Player(1)
 player2 = Player(2)
-
+player3 = Player(3)
 
 sprites = pygame.sprite.Group()
 for i in range(3):
     sprites.add(Target())
 sprites.add(player1)
 sprites.add(player2)
+sprites.add(player3)
 sprites.add(Score())
 sprites.add(Health())
+
+print("Press Player1: (W+S+Q) Player2: (ArrowUp+ArrowDown+Space) Player3: (I+K+U) to control your plane ...")
 
 while running:
     clock.tick(60)
